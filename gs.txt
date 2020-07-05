@@ -1,0 +1,39 @@
+
+
+
+python3 -m uflow.data_conversion_scripts.convert_KITTI_flow_to_tfrecords --data_dir=data_scene_flow
+
+python3 -m uflow.data_conversion_scripts.convert_KITTI_multiview_to_tfrecords --data_dir=data_scene_flow
+
+
+### CONNECTION AIS PC-CLUSTER ###
+ssh sommerl@aislogin.informatik.uni-freiburg.de
+ssh-copy-id -i id_rsa_psiori.pub sommerl@aislogin.informatik.uni-freiburg.de
+ssh-copy-id pearl9
+
+
+###   STATS AIS PC-CLUSTER    ###
+show disk space
+df -h
+
+show free memory (RAM)
+free -m -h
+
+show GPU
+nvida-smi
+
+show CPU:
+lscpu
+
+
+
+##### not working because i have no rights :/ ######
+
+1: nano ~/.ssh/config
+
+2: add to file:
+Host *
+    StrictHostKeyChecking no
+
+3: change rights
+sudo chmod 400 ~/.ssh/config
