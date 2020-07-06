@@ -72,7 +72,7 @@ def convert_dataset(data_dir):
           for image_file in image_files:
             # Read the image.
             image_path = os.path.join(image_dir, image_file)
-            image_data = tf.compat.v1.gfile.FastGFile(image_path, 'r').read()
+            image_data = tf.compat.v1.gfile.FastGFile(image_path, 'rb').read()
 
             image_tensor = tf.image.decode_png(image_data, channels=3)
             image_resized = tf.image.resize(

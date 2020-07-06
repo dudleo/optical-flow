@@ -1,9 +1,17 @@
 
 
+### SETUP ENVIRONMENT ###
+python3 -m venv venv
+pip install pip --upgrade
+pip install -r git/uflow/requirements.txt
 
-python3 -m uflow.data_conversion_scripts.convert_KITTI_flow_to_tfrecords --data_dir=data_scene_flow
+###  SETUP DATASETS   ###
+cd git
 
-python3 -m uflow.data_conversion_scripts.convert_KITTI_multiview_to_tfrecords --data_dir=data_scene_flow
+unzip ../datasets/KITTI_flow
+python3 -m uflow.data_conversion_scripts.convert_KITTI_flow_to_tfrecords --data_dir=../datasets/KITTI_flow
+
+python3 -m uflow.data_conversion_scripts.convert_KITTI_multiview_to_tfrecords --data_dir=../datasets/KITTI_flow_multiview
 
 
 ### CONNECTION AIS PC-CLUSTER ###
