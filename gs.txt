@@ -1,4 +1,16 @@
 
+## TODO ##
+
+find out how census loss is implemented
+find out how ssim loss is implemented
+
+logging dependent on use_tensorboard
+testing log tensorboard
+
+## DONE ##
+training log tensorboard
+
+
 
 ### SETUP ENVIRONMENT ###
 python3 -m venv venv
@@ -21,15 +33,13 @@ python3 -m uflow.data_conversion_scripts.convert_KITTI_flow_to_tfrecords --data_
 python3 -m uflow.data_conversion_scripts.convert_KITTI_multiview_to_tfrecords --data_dir=../datasets/KITTI_flow_multiview
 
 python3 -m uflow.uflow_main \
- --train_on="kitti:../datasets/KITTI_flow_multiview/KITTI_flow_multiview_train_384x1280-tfrecords" \
+ --train_on="kitti:../datasets/KITTI_flow_multiview/KITTI_flow_multiview_test_384x1280-tfrecords" \
  --checkpoint_dir="models" \
  --use_tensorboard=true \
  --tensorboard_logdir="tensorboard" \
  --plot_dir="plot" \
- --epoch_length=10
-
-
-  --eval_on="kitti:../datasets/KITTI_flow/KITTI_flow_testing-tfrecords" \
+ --epoch_length=10 \
+ --eval_on="kitti:../datasets/KITTI_flow/KITTI_flow_training-tfrecords" \
  --evaluate_during_train=true
 
     from_scratch

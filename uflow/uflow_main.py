@@ -348,8 +348,10 @@ def main(unused_argv):
           occ_active=occ_active)
 
       for key in log_update:
-        print("adding summary:", key, log_update[key], epoch)
-        with writer.as_default():
+
+        if FLAGS.use_tensorboard:
+          print("train - adding summary:", key, log_update[key], epoch)
+          with writer.as_default():
             tf.summary.scalar(key, log_update[key], step=epoch)
 
         if key in log:
@@ -366,6 +368,13 @@ def main(unused_argv):
       if FLAGS.eval_on and FLAGS.evaluate_during_train:
         # Evaluate
         eval_results = evaluate(uflow)
+
+        if FLAGS.use_tensorboard:
+          for key in eval_results:
+            print("test - adding summary:", key, eval_results[key], epoch)
+            with writer.as_default():
+                tf.summary.scalar(key, eval_results[key], step=epoch)
+
         uflow_plotting.print_eval(eval_results)
 
       if current_step >= FLAGS.num_train_steps:
@@ -378,8 +387,14 @@ def main(unused_argv):
     print('Just doing evaluation now.')
     eval_results = evaluate(uflow)
     if eval_results:
-      uflow_plotting.print_eval(eval_results)
-    print('Evaluation complete.')
+        if FLAGS.use_tensorboard:
+          for key in eval_results:
+            print("test - adding summary:", key, eval_results[key], 0)
+            with writer.as_default():
+                tf.summary.scalar(key, eval_results[key], step=0)
+
+        uflow_plotting.print_eval(eval_results)
+        print('Evaluation complete.')
 
 
 if __name__ == '__main__':
