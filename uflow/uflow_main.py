@@ -348,7 +348,6 @@ def main(unused_argv):
           occ_active=occ_active)
 
       for key in log_update:
-
         print("adding summary")
         tf.summary.scalar(key, log_update[key], epoch)
 
