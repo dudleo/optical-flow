@@ -173,6 +173,8 @@ def create_frozen_teacher_models(uflow):
 
 
 def main(unused_argv):
+  print("use_tensorboard", FLAGS.use_tensorboard)
+  print("tensorboard_logdir", FLAGS.tensorboard_logdir)
 
   if FLAGS.no_tf_function:
     tf.config.experimental_run_functions_eagerly(True)
