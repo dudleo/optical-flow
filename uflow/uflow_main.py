@@ -348,11 +348,9 @@ def main(unused_argv):
           occ_active=occ_active)
 
       for key in log_update:
-        print("adding summary")
-        tf.summary.scalar(key, log_update[key], epoch)
-
-        print("writing summary to file")
-        writer.flush()
+        print("adding summary:", key, log_update[key], epoch)
+        with writer.as_default():
+            tf.summary.scalar(key, log_update[key], step=epoch)
 
         if key in log:
           log[key].append(log_update[key])
