@@ -175,7 +175,7 @@ def create_frozen_teacher_models(uflow):
 def main(unused_argv):
   print("use_tensorboard", FLAGS.use_tensorboard)
   print("tensorboard_logdir", FLAGS.tensorboard_logdir)
-  writer = tf.summary.FileWriter(FLAGS.tensorboard_logdir)
+  writer = tf.summary.create_file_writer(FLAGS.tensorboard_logdir)
 
   if FLAGS.no_tf_function:
     tf.config.experimental_run_functions_eagerly(True)
@@ -348,7 +348,9 @@ def main(unused_argv):
           occ_active=occ_active)
 
       for key in log_update:
-        writer.add_summary(tf.summary.scalar(key, log_update[key]), epoch)
+        tf.summary.scalar(key, log_update[key], epoch)
+        writer.flush()
+
         if key in log:
           log[key].append(log_update[key])
         else:
