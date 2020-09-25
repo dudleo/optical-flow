@@ -1228,6 +1228,7 @@ def census_loss(image_a_bhw3,
                 mask_bhw3,
                 patch_size=7,
                 distance_metric_fn=abs_robust_loss):
+  print(mask_bhw3.shape)
   """Compares the similarity of the census transform of two images."""
   census_image_a_bhwk = census_transform(image_a_bhw3, patch_size)
   census_image_b_bhwk = census_transform(image_b_bhw3, patch_size)
@@ -1313,6 +1314,7 @@ def weighted_ssim(x, y, weight, c1=float('inf'), c2=9e-6, weight_epsilon=0.01):
     still assign a loss to these pixels, but we shouldn't take the result too
     seriously.
   """
+
   if c1 == float('inf') and c2 == float('inf'):
     raise ValueError('Both c1 and c2 are infinite, SSIM loss is zero. This is '
                      'likely unintended.')

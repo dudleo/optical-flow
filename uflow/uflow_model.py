@@ -282,6 +282,7 @@ class PWCFlow(Model):
       refinement *= tf.cast(
           tf.math.greater(tf.random.uniform([]), self._drop_out_rate),
           tf.bfloat16 if self._use_bfloat16 else tf.float32)
+
     refined_flow = flow + refinement
     flows[0] = refined_flow
     return [tf.cast(flow, tf.float32) for flow in flows]

@@ -1,14 +1,157 @@
 
 ## TODO ##
 
-find out how census loss is implemented
-find out how ssim loss is implemented
+ais git:
+
+tensorflow uflow
+ - add inference for KITTI and occlusion masks
+
+next:
+    forward - backward consistency/occlusion mask requires warping of flow?
+
+    add noc/occ directory to validation dataset/-loader
+    self-sup loss:
+        - robust l1 loss (occlusion weighted charbonnier loss)
+            - low fb-consistency in student and high fb-consistency in teacher
+        - stop gradient for teacher network
+        - resize cropped images
+        - same network for teacher and student
+
+    add occlusion mask to loss
+        - occlusion masks are for training primarily or also for visualization?
+
+    add dropout to training
+
+
+implementation
+    - optimization procedure
+    - correct model (especially the context modules)
+    - losses: census, ssim, supervision loss
+    - occlusion: wang / brox
+        q8: only for photometric loss or also for smoothness loss relevant?
+    - add self-supervised loss
+
+    - soothness loss
+    - decay of learning rate: 10-4 for m steps, followed by 1/5m steps with exponentially decay to 10-8
+        m = 50K : batch-size=32 , m = 1M : batch-size=1
+    - cost vol
+    - add dropout for training
+
+    - OUTPUT IMAGES/ OPTICAL FLOW (flownet rgb2flow)
+
+
+q8: forward-backward consistency for valid pixel mask only or using an additional loss?
+p1: adding forward backward mask leads to constant prediction for all pixel, s.t. there is no valid pixel anymore and the census loss gets 0
+    -> possible solution: train forward backward first without mask, and then later if mask is already quite good add mask.
+rethink census_loss and smoothness_loss dimension
+
+q1: census loss: batch size normalization
+q2: apply loss only at last layer?
+q3: apply smoothness loss at 1/4 resolution?
+q4: for occlusion lets take the same pair forward and backward?
+q5: supervised loss resizing?
+q6: cost volume is implemented?
+q7: random restarts completely change result of training?
+
+
+    - dataloader
+
+    - logger, load/save model
+        - save model, optimizer state_dict pytorch
+        - save/load coach_state_dict
+        - save/load coach_hyperparams
+        - add clerk save dict method
+
+
+warping always backward, s.t. img2 is pulled back to img1
+
+tested warping and started to train with l1_loss
+
+output flow always at image resolution:
+    for training: 640x640
+    for evaluation: dependent of each image-pairs
+
+smoothness applied at level2: means smoothness is applied at 1/4th of the image resolution
+
+
+so predicted flow gets only resized to original resolution for evaluation?
+otherwise we have problems to load a batch of different sized images for training
+
+problem:
+    torch tensor does not support uint16
+    pil does not support uint16
+    skimage does not support uint16
+    pypng is apparently slow
+
+solution:
+    use cv2
+
+
+findout about inner resizing steps
+
+occlusion estiamtions: wang/ brox
+
+census transform:
+input: rgb image
+output: difference for each pixel to its neighbors 7x7
+1. rgb to gray: bxhxwxc -> bxhxwx1
+2. neighbor intensities as channels: bxhxwx1 -> bxhxwx7*7 (padding with zeros)
+3. difference calculation: L1 / sqrt(0.81 + L1^2): bxhxwx7*7 (coefficient from DDFlow)
+
+soft hamming distance:
+input: census transformed images bxhxwxk
+output: difference between census transforms per pixel
+1. difference calculation per pixel, per features: L2 / (0.1 + L2)
+2. summation over features: bxhxwxk -> bxhxwx1
+
+census loss:
+1. hamming distance from census transformed rgb images
+2. robust loss for per pixel hamming distance: (|diff|+0.01)^0.4   (as in DDFlow)
+3. per pixel multiplication with zero mask at border s.t. every loss value close to border = 0
+4. sum over all pixel and divide by number of pixel which were not zeroed out: sum(per_pixel_loss)/ (num_pixels + 1e-6)
+
+
+ssim loss: [-1,1]
+input: two rgb images [B, H, W, C],
+output: [B, H-2, W-2, C]
+note: patch size: 3x3
+note: coefficients: c1=float('inf'), c2=9e-6, c3=c2/2, eps=0.01
+x: BxHxWxC, weights:BxHxWx1, eps:1
+weighted_avg_pool:
+avg_pool_3x3(x .* (weights+eps)) ./ [avg_pool_3x3(weights) + eps]
+
+mu_x = weighted_avg_pool(x)
+mu_y
+sigma_x = weighted_avg_pool(x^2) - mu_x^2
+sigma_xy = weighted_avg_pool(x*y) - (mu_x * mu_y)
+dssim: clip((1 - ssim)/2, min=0, max=1) in [0,1]
+
+q: why is c3 c2/2 for ssim?
+
+
+
+uflow adaption
+
+####### DONE #######
+
+pwc-net
+
+note: training procedure:
+    - wang occlusion instead of brox
+    - self supervision only after 500,000 steps, and I am still at 100,000 so it never was applied yet
+    - smoothness was applied for KITTI, smooth1=0.0 smooth2=2.0
+
+freezing teacher self-supervision: take model from previous epoch as teacher
+
+perform inference with learned model
 
 logging dependent on use_tensorboard
-testing log tensorboard
 
-## DONE ##
+testing log tensorboard
 training log tensorboard
+
+
+
 
 
 
@@ -25,14 +168,19 @@ pip install tensorflow-gpu>=2.1.0
 
 
 ###  SETUP DATASETS   ###
+scp leo@192.168.0.104:~\MS_CS\Master-Project\optical_flow\datasets\FlyingChairs.zip .
 cd git
 
 unzip ../datasets/KITTI_flow
 python3 -m uflow.data_conversion_scripts.convert_KITTI_flow_to_tfrecords --data_dir=../datasets/KITTI_flow
+python -m uflow.data_conversion_scripts.convert_KITTI_flow_to_tfrecords --data_dir=datasets/KITTI_flow
 
 python3 -m uflow.data_conversion_scripts.convert_KITTI_multiview_to_tfrecords --data_dir=../datasets/KITTI_flow_multiview
+python -m uflow.data_conversion_scripts.convert_KITTI_multiview_to_tfrecords --data_dir=datasets/KITTI_flow_multiview
 
-python3 -m uflow.uflow_main \
+###  START TRAINING  ###
+
+python -m uflow.uflow_main \
  --train_on="kitti:../datasets/KITTI_flow_multiview/KITTI_flow_multiview_test_384x1280-tfrecords" \
  --checkpoint_dir="models" \
  --use_tensorboard=true \
@@ -40,20 +188,27 @@ python3 -m uflow.uflow_main \
  --plot_dir="plot" \
  --epoch_length=10 \
  --eval_on="kitti:../datasets/KITTI_flow/KITTI_flow_training-tfrecords" \
- --evaluate_during_train=true
+ --evaluate_during_train=true \
+ --epoch_length=10
 
-    from_scratch
+python -m uflow.uflow_main ^
+ --train_on="kitti:datasets/KITTI_flow_multiview/KITTI_flow_multiview_test_384x1280-tfrecords" ^
+ --checkpoint_dir="models" ^
+ --use_tensorboard=true ^
+ --tensorboard_logdir="tensorboard" ^
+ --plot_dir="plot" ^
+ --eval_on="kitti:datasets/KITTI_flow/KITTI_flow_training-tfrecords" ^
+ --evaluate_during_train=true ^
+ --epoch_length=10
 
- flags.DEFINE_bool('evaluate_during_train', False,
- flags.DEFINE_string('train_on', '',
-                    '"format0:path0;format1:path1", e.g. "kitti:/usr/..."')
-flags.DEFINE_string('eval_on', '',
-                    '"format0:path0;format1:path1", e.g. "kitti:/usr/..."')
-flags.DEFINE_string('plot_dir', '', 'Path to directory where plots are saved.')
-flags.DEFINE_string('checkpoint_dir', '',
-                    'Path to directory for saving and restoring checkpoints.')
-flags.DEFINE_string('init_checkpoint_dir', '',
-                    'Path to directory for initializing from a checkpoint.')
+
+(epoch-length = 1000, )
+training 1 epoch: KITTI-flow-multiview-test: 222s
+testing 1 epoch: KITTI-flow-train: 73s
+
+'from_scratch'
+'checkpoint_dir', 'Path to directory for saving and restoring checkpoints.'
+'init_checkpoint_dir', 'Path to directory for initializing from a checkpoint.'
 
 
 use_tensorboard', False, 'Toggles logging to tensorboard.')
@@ -65,7 +220,6 @@ python3 -m uflow.uflow_evaluator --eval_on="kitti:../datasets/KITTI_flow/KITTI_f
 tensorboard --logdir tensorboard
 ssh -L 6006:localhost:6006 sommerl@aislogin.informatik.uni-freiburg.de
 ssh -L 6006:localhost:6006 pearl9
-
 
 
 ### CONNECTION AIS PC-CLUSTER ###
@@ -128,3 +282,40 @@ Host *
 
 3: change rights
 sudo chmod 400 ~/.ssh/config
+
+
+####  setup GPU windows  ####
+
+1. Install Driver
+https://www.nvidia.de/Download/index.aspx?lang=de#
+RTX2080TI Windows10 GRD Deutsch
+
+
+2. Install Cuda 10.1 (works for tensorflow and pytorch)
+
+https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/
+requires:
+    - installation driver
+    - visual studio
+
+download:
+https://developer.nvidia.com/cuda-10.1-download-archive-base?target_os=Windows&target_arch=x86_64&target_version=10
+
+check version: nvcc -V
+
+3. Install cudnn 7.6.5 (works for cuda 10.1)
+
+https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html
+
+jupyter-notebook
+conda install ipykernel jupyter
+python -m ipykernel install --user --name tf-gpu --display-name "TensorFlow-GPU-1.13"
+
+4. set environment variables for cuda 10.1: bin; extras\CUPTI\lib64; include
+SET PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\bin;%PATH%
+SET PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\extras\CUPTI\lib64;%PATH%
+SET PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include;%PATH%
+
+
+##
+sommerl@login.informatik.uni-freiburg.de

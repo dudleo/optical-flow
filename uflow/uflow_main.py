@@ -31,6 +31,9 @@ from uflow import uflow_flags
 from uflow import uflow_plotting
 from uflow.uflow_net import UFlow
 
+from datetime import datetime
+import os
+
 FLAGS = flags.FLAGS
 
 
@@ -173,9 +176,11 @@ def create_frozen_teacher_models(uflow):
 
 
 def main(unused_argv):
+  date = datetime.now().strftime("%m%d%Y_%H%M%S")
   print("use_tensorboard", FLAGS.use_tensorboard)
   print("tensorboard_logdir", FLAGS.tensorboard_logdir)
-  writer = tf.summary.create_file_writer(FLAGS.tensorboard_logdir)
+  train_writer = tf.summary.create_file_writer(os.path.join(os.path.join(FLAGS.tensorboard_logdir, date),'train'))
+  test_writer = tf.summary.create_file_writer(os.path.join(os.path.join(FLAGS.tensorboard_logdir, date), 'test'))
 
   if FLAGS.no_tf_function:
     tf.config.experimental_run_functions_eagerly(True)
@@ -283,7 +288,8 @@ def main(unused_argv):
 
     while True:
       current_step = tf.compat.v1.train.get_or_create_global_step().numpy()
-
+      print("current_step", current_step)
+      print("epoch", epoch)
       # Set which occlusion estimation methods could be active at this point.
       # (They will only be used if occlusion_estimation is set accordingly.)
       occ_active = {
@@ -351,7 +357,7 @@ def main(unused_argv):
 
         if FLAGS.use_tensorboard:
           print("train - adding summary:", key, log_update[key], epoch)
-          with writer.as_default():
+          with train_writer.as_default():
             tf.summary.scalar(key, log_update[key], step=epoch)
 
         if key in log:
@@ -372,7 +378,7 @@ def main(unused_argv):
         if FLAGS.use_tensorboard:
           for key in eval_results:
             print("test - adding summary:", key, eval_results[key], epoch)
-            with writer.as_default():
+            with test_writer.as_default():
                 tf.summary.scalar(key, eval_results[key], step=epoch)
 
         uflow_plotting.print_eval(eval_results)
@@ -384,18 +390,20 @@ def main(unused_argv):
 
   else:
     print('Specify flag train_on to enable training to <format>:<path>;... .')
+    '''
+    ## doesnt work as evaluate function is not created if eval_on is not enabled
     print('Just doing evaluation now.')
     eval_results = evaluate(uflow)
     if eval_results:
         if FLAGS.use_tensorboard:
           for key in eval_results:
             print("test - adding summary:", key, eval_results[key], 0)
-            with writer.as_default():
+            with test_writer.as_default():
                 tf.summary.scalar(key, eval_results[key], step=0)
 
         uflow_plotting.print_eval(eval_results)
         print('Evaluation complete.')
-
+    '''
 
 if __name__ == '__main__':
   app.run(main)
