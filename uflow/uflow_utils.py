@@ -430,8 +430,24 @@ def apply_warps_stop_grad(sources, warps, level):
     # Only propagate gradient through the warp, not through the source.
     warped[(i, j, t)] = resample(
         tf.stop_gradient(sources[j]), warps[(i, j, t)][level])
-
   return warped
+
+'''
+                  import numpy as np
+                  import cv2
+                
+                  img1_warped = warped[0, 1, 'augmented-student'][0]
+                  img1 = sources[1][0]
+                  img2 = sources[0][0]
+                
+                  img_vis = tf.concat([img1, img1_warped, img2], 1)
+                  #img_vis = img1_warped
+                  #img_vis = img1
+                  #img_vis = np.moveaxis(img_vis, -1, 0)
+                  img_vis = (img_vis.numpy() * 255.).astype(np.uint8)
+                  cv2.imshow('a', img_vis)
+                  cv2.waitKey(0)
+'''
 
 
 def upsample(img, is_flow):
@@ -689,8 +705,10 @@ def compute_loss(
       [1.0 for (i, j, c) in warps if c in compute_loss_for_these_flows])
 
   # Iterate over image pairs.
+  print('iteration')
   for key in warps:
     i, j, c = key
+
 
     if c not in compute_loss_for_these_flows or (only_forward and i > j):
       continue
@@ -786,12 +804,88 @@ def compute_loss(
         unused_flow_gyx, flow_gyy = image_grads(flow_gy)
 
         # Compute weighted smoothness
-        losses['smooth2'] += (
-            weights['smooth2'] *
+        print('key', key)
+        print('max-img', tf.math.reduce_max(images_at_level[smoothness_at_level]))
+        print('img_gx.shape', img_gx.shape)
+        print('weights_xx.shape', weights_xx.shape)
+        print('flow_gxx.shape', flow_gxx.shape)
+        print('num_pairs', num_pairs)
+        smoothness_loss = (weights['smooth2'] *
             (tf.reduce_mean(input_tensor=weights_xx * robust_l1(flow_gxx)) +
              tf.reduce_mean(input_tensor=weights_yy * robust_l1(flow_gyy))) /
             2. / num_pairs)
+        print(smoothness_loss)
+        losses['smooth2'] += smoothness_loss
+        #losses['flow-lvl2-abs-avg'] = tf.reduce_mean(abs(flows[key][2]))
 
+        losses['flow-lvl2-abs-avg'] = tf.reduce_mean(abs(img_gx)) + tf.reduce_mean(abs(img_gy))
+        #with tf.compat.v1.InteractiveSession() as sess:
+        print('smoothness_loss', smoothness_loss)
+        print('acc_smoothness_loss', losses['smooth2'])
+
+        '''
+        import torch
+        def calc_batch_gradients(batch, margin=0):
+            #batch: torch.tensor: BxCxHxW
+            shift = 1 + margin
+            batch_grad_x = batch[:, :, :, shift:] - batch[:, :, :, :-shift]
+            # B x 2 x H x W-shift
+
+            batch_grad_y = batch[:, :, shift:, :] - batch[:, :, :-shift, :]
+            # B x 2 x H-shift x W
+
+            return batch_grad_x, batch_grad_y
+
+        def calc_batch_k_gradients(batch, order):
+
+            print(batch.size())
+            batch_k_grad_x, batch_k_grad_y = calc_batch_gradients(batch)
+            print(batch_k_grad_x.size())
+            for k in range(order-1):
+                batch_k_grad_x, _ = calc_batch_gradients(batch_k_grad_x)
+                print(batch_k_grad_x.size())
+                _, batch_k_grad_y = calc_batch_gradients(batch_k_grad_y)
+
+            return batch_k_grad_x, batch_k_grad_y
+
+        def robust_l1(x):
+            """Robust L1 metric."""
+            return (x ** 2 + 0.001 ** 2) ** 0.5
+
+
+        img1 = torch.from_numpy(images_at_level[smoothness_at_level].numpy()).permute(0, 3, 1, 2)
+        flow = torch.from_numpy(flows[key][smoothness_at_level].numpy()).permute(0, 3, 1, 2)
+        edge_weight=150
+        order=2
+
+        # flow: torch.tensor: Bx2xHxW
+        # img1: torch.tensor: Bx3xHxW
+
+        margin = 0
+        flow_k_grad_x, flow_k_grad_y = calc_batch_gradients(flow)
+        for k in range(order-1):
+            flow_k_grad_x, _ = calc_batch_gradients(flow_k_grad_x)
+            _, flow_k_grad_y = calc_batch_gradients(flow_k_grad_y)
+
+        #flow_k_grad_x = torch.abs(flow_k_grad_x)
+        flow_k_grad_x = robust_l1(flow_k_grad_x)
+        # Bx2xHxW-1
+        #flow_k_grad_y = torch.abs(flow_k_grad_y)
+        flow_k_grad_y = robust_l1(flow_k_grad_y)
+        # Bx2xH-1xW
+
+        img1_grad_x, img1_grad_y = calc_batch_gradients(img1, margin=order-1)
+        img1_grad_x = torch.abs(img1_grad_x)
+        # Bx3xHxW-1
+        img1_grad_y = torch.abs(img1_grad_y)
+        # Bx3xH-1xW
+
+        loss = (torch.mean(torch.exp(-edge_weight * torch.mean(img1_grad_x, dim=1, keepdim=True)) * flow_k_grad_x) +
+                torch.mean(torch.exp(-edge_weight * torch.mean(img1_grad_y, dim=1, keepdim=True)) * flow_k_grad_y)) / 2.0
+
+        weights_xx = torch.from_numpy(weights_xx.numpy()).permute(0, 3, 1, 2)
+        weights_yy = torch.from_numpy(weights_yy.numpy()).permute(0, 3, 1, 2)
+        '''
         if plot_dir is not None:
           uflow_plotting.plot_smoothness(key, images, weights_xx, weights_yy,
                                          robust_l1(flow_gxx),
@@ -864,7 +958,8 @@ def compute_loss(
                                     student_mask, mask, selfsup_transform_fns,
                                     plot_dir)
 
-  losses['total'] = sum(losses.values())
+
+  losses['total'] = sum(losses.values()) - losses['flow-lvl2-abs-avg']
 
   return losses
 

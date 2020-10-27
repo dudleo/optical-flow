@@ -44,6 +44,7 @@ def parse_data(proto, height, width):
     A sequence of images as tf.Tensor of shape
     [sequence length, height, width, 3].
   """
+  print('proto', proto)
 
   # Parse context and image sequence from protobuffer.
   unused_context_parsed, sequence_parsed = tf.io.parse_single_sequence_example(
@@ -200,6 +201,7 @@ def parse_test_data(proto):
     which entries are valid, occ includes all flow vectors and noc excludes
     those that are not visible in the next frame.
   """
+  print('proto', proto)
 
   # Parse context and image sequence from protobuffer.
   context_parsed, sequence_parsed = tf.io.parse_single_sequence_example(
@@ -211,6 +213,8 @@ def parse_test_data(proto):
       sequence_features={
           'images': tf.io.FixedLenSequenceFeature([], tf.string)
       })
+
+  print('context_parsed', context_parsed)
 
   def deserialize(s, dtype, dims):
     return tf.reshape(
@@ -232,7 +236,7 @@ def make_dataset(path,
                  height=None,
                  width=None,
                  resize_gt_flow=True,
-                 seed=41):
+                 seed=43):
   """Make a dataset for training or evaluating UFlow in uflow_main.
 
   Args:
@@ -438,10 +442,14 @@ def evaluate(inference_fn,
       all_occlusion_results[thresh]['tn'] += metrics['tn']
       all_occlusion_results[thresh]['fn'] += metrics['fn']
 
-    mask_thresh = tf.cast(
-        tf.math.greater(soft_occlusion_mask, best_thresh), tf.float32)
+    #mask_thresh = tf.cast(
+    #    tf.math.greater(soft_occlusion_mask, best_thresh), tf.float32)
+    mask_thresh = soft_occlusion_mask
     # Image coordinates are swapped in labels
     final_flow = flow[Ellipsis, ::-1]
+
+    #print('final_flow', final_flow.shape)
+    #print('flow_uv_occ', flow_uv_occ.shape)
 
     endpoint_error_occ = tf.reduce_sum(
         input_tensor=(final_flow - flow_uv_occ)**2, axis=-1, keepdims=True)**0.5

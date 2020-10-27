@@ -25,7 +25,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('data_dir', '.', 'Dataset folder.')
 flags.DEFINE_integer('height', 384, '')
 flags.DEFINE_integer('width', 1280, '')
-flags.DEFINE_bool('entire_sequence', False,
+flags.DEFINE_bool('entire_sequence', True,
                   'Train on the full sequence, otherwise skip frames 9-12.')
 
 

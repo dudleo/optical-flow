@@ -34,6 +34,8 @@ from uflow.uflow_net import UFlow
 from datetime import datetime
 import os
 
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 FLAGS = flags.FLAGS
 
 
@@ -229,6 +231,7 @@ def main(unused_argv):
   if FLAGS.train_on:
     # Build training iterator.
     print('Making training iterator.')
+
     train_it = uflow_data.make_train_iterator(
         FLAGS.train_on,
         FLAGS.height,
@@ -242,6 +245,23 @@ def main(unused_argv):
         resize_gt_flow=FLAGS.resize_gt_flow_supervision,
         include_occlusions=FLAGS.use_gt_occlusions,
     )
+    '''
+    import cv2
+    num_steps = 10
+    for _, batch in zip(range(num_steps), train_it):
+        images, labels = batch
+        ground_truth_flow = labels.get('flow_uv', None)
+        ground_truth_valid = labels.get('flow_valid', None)
+        ground_truth_occlusions = labels.get('occlusions', None)
+        images_without_photo_aug = labels.get('images_without_photo_aug', None)
+
+        img1 = images_without_photo_aug[0][0]
+        img2 = images_without_photo_aug[0][1]
+        img = tf.concat([img1, img2], 1)
+        img_vis = (img[:, :, ::-1].numpy() * 255.).astype(np.uint8)
+        cv2.imshow('a', img_vis)
+        cv2.waitKey(0)
+    '''
 
     if FLAGS.use_supervision:
       # Since this is the only loss in this setting, and the Adam optimizer

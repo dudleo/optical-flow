@@ -126,7 +126,13 @@ def flow_to_rgb(flow):
     shape = [s.value for s in shape]
   height, width = [float(s) for s in shape[-3:-1]]
   scaling = _FLOW_SCALING_FACTOR / (height**2 + width**2)**0.5
-
+  print('height', height)
+  print('width', width)
+  print('is_graph_mode', is_graph_mode)
+  print('shape', shape)
+  print('max-u', np.min(flow[:, :, 0]), np.max(flow[:, :, 0]))
+  print('max-v', np.min(flow[:, :, 1]), np.max(flow[:, :, 1]))
+  flow[flow[:, :, 0] < 0.] = 0.
   # Compute angles and lengths of motion vectors.
   if is_graph_mode:
     motion_angle = tf.atan2(flow[Ellipsis, 1], flow[Ellipsis, 0])

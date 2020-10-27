@@ -177,6 +177,7 @@ class PWCFlow(Model):
       # pylint:disable=invalid-name
       self._1x1_shared_decoder = self._build_1x1_shared_decoder()
 
+
   def call(self, feature_pyramid1, feature_pyramid2, training=False):
     """Run the model."""
     context = None
@@ -363,7 +364,8 @@ class PWCFlow(Model):
             strides=1,
             padding='same',
             dtype=self._dtype_policy))
-    return Sequential(layers)
+    model = Sequential(layers)
+    return model
 
   def _build_1x1_shared_decoder(self):
     """Build layers for flow estimation."""
@@ -378,6 +380,8 @@ class PWCFlow(Model):
               padding='same',
               dtype=self._dtype_policy))
     return result
+
+
 
 
 class PWCFeaturePyramid(Model):

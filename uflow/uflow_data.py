@@ -46,7 +46,7 @@ def make_train_iterator(
     include_ground_truth=False,
     resize_gt_flow=True,
     include_occlusions=False,
-    seed=41,
+    seed=43,
     mode='train',
 ):
   """Build joint training iterator for all data in train_on.

@@ -464,6 +464,7 @@ class UFlow(object):
     self._optimizer.apply_gradients(
         list(zip(gradients, variables)),
         global_step=tf.compat.v1.train.get_or_create_global_step())
+    print('optimizer-step', tf.compat.v1.train.get_or_create_global_step())
     return losses
 
   @tf.function
@@ -519,6 +520,8 @@ class UFlow(object):
     else:
       log['learning-rate'] = self._learning_rate
 
+
+
     start_time_data = time.time()
     for _, batch in zip(range(num_steps), data_it):
       stop_time_data = time.time()
@@ -536,6 +539,7 @@ class UFlow(object):
 
       start_time_train_step = time.time()
       # Use tf.function unless intermediate results have to be plotted.
+      plot_dir='abc'
       if plot_dir is None:
         # Perform a gradient step (optimized by tf.function).
         losses = self.train_step(
@@ -547,6 +551,7 @@ class UFlow(object):
             ground_truth_occlusions=ground_truth_occlusions,
             images_without_photo_aug=images_without_photo_aug,
             occ_active=occ_active)
+
       else:
         # Perform a gradient step without tf.function to allow plotting.
         losses = self.train_step_no_tf_function(
@@ -560,6 +565,7 @@ class UFlow(object):
             images_without_photo_aug=images_without_photo_aug,
             occ_active=occ_active)
       stop_time_train_step = time.time()
+      print(losses)
 
       log_update = losses
       # Compute time in ms.
@@ -636,6 +642,8 @@ class UFlow(object):
     variables = (
         self._feature_model.trainable_variables +
         self._flow_model.trainable_variables)
+
+
     grads = tape.gradient(losses['total-loss'], variables)
     return losses, grads, variables
 
@@ -677,6 +685,66 @@ class UFlow(object):
         teacher_image_version=self._teacher_image_version,
     )
 
+    total_parameters = 0
+    weights_means = []
+    weights_vars = []
+    bias_means = []
+    bias_vars = []
+    for variable in self._feature_model.trainable_variables:
+        # shape is an array of tf.Dimension
+        shape = variable.get_shape()
+        #print(shape)
+        #print(len(shape))
+
+        if len(shape) == 1:
+            mean, var = tf.nn.moments(variable, axes=list(range(len(shape))))
+            bias_means.append(mean)
+            bias_vars.append(var)
+        else:
+            mean, var = tf.nn.moments(variable, axes=list(range(len(shape))))
+            weights_means.append(mean)
+            weights_vars.append(var)
+
+        variable_parameters = 1
+        for dim in shape:
+            #print(dim)
+            variable_parameters *= dim
+        #print(variable_parameters)
+        total_parameters += variable_parameters
+
+    for variable in self._flow_model.trainable_variables:
+        # shape is an array of tf.Dimension
+        shape = variable.get_shape()
+        #print(shape)
+        #print(len(shape))
+
+        if len(shape) == 1:
+            mean, var = tf.nn.moments(variable, axes=list(range(len(shape))))
+            bias_means.append(mean)
+            bias_vars.append(var)
+        else:
+            mean, var = tf.nn.moments(variable, axes=list(range(len(shape))))
+            weights_means.append(mean)
+            weights_vars.append(var)
+
+        variable_parameters = 1
+        for dim in shape:
+            #print(dim)
+            variable_parameters *= dim
+        #print(variable_parameters)
+        total_parameters += variable_parameters
+    print('total_parameters', total_parameters)
+
+    '''
+    print('bias-means', bias_means)
+    print('bias-means-avg', tf.math.reduce_mean(tf.convert_to_tensor(bias_means)))
+    print('bias-vars', bias_vars)
+    print('bias-vars-avg', tf.math.reduce_mean(tf.convert_to_tensor(bias_vars)))
+    print('weights-means', weights_means)
+    print('weights-means-avg', tf.math.reduce_mean(tf.convert_to_tensor(weights_means)))
+    print('weights-vars', weights_vars)
+    print('weights-vars-avg', tf.math.reduce_mean(tf.convert_to_tensor(weights_vars)))
+    '''
     # Prepare images for unsupervised loss (prefer unaugmented images).
     images = dict()
     seq_len = int(batch.shape[1])
@@ -718,4 +786,6 @@ class UFlow(object):
         ground_truth_occlusions=ground_truth_occlusions,
         smoothness_at_level=self._smoothness_at_level)
     losses = {key + '-loss': losses[key] for key in losses}
+
+    print(losses)
     return losses
