@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # DATASETS_HOME
-KITTI_HOME="C:/Users/Leonh/PycharmProjects/optical-flow/datasets/KITTI_complete"
+KITTI_HOME="~/master-project/datasets/KITTI_flow"
 CHECKPOINT="checkpoints/full_model_kitti/checkpoint_kitti_split.ckpt"
 
 # model
