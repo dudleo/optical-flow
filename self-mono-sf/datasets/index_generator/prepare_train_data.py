@@ -393,7 +393,7 @@ class SplitTrainVal_even(object):
 def main():
 
     sequence_length = 1
-    dataset_dir = '/fastdata/jhur/KITTI_raw_noPCL/'
+    dataset_dir = "~/master-project/datasets/KITTI_complete"
     
     ## KITTI SPLIT
     extract_kitti_benchmark_scene()
