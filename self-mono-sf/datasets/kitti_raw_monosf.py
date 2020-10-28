@@ -35,7 +35,7 @@ class KITTI_Raw(data.Dataset):
 
         ## loading image -----------------------------------
         if not os.path.isdir(images_root):
-            raise ValueError("Image directory '%s' not found!")
+            raise ValueError("Image directory {} not found!".format(images_root))
 
         filename_list = [line.rstrip().split(' ') for line in index_file.readlines()]
         self._image_list = []
