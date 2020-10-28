@@ -4,9 +4,9 @@
 #which python
 
 # experiments and datasets meta
-KITTI_RAW_HOME="~/master-project/datasets/KITTI_complete"
+KITTI_RAW_HOME="/home/sommerl/master-project/datasets/KITTI_complete"
 #own experiment directory where checkpoints and log files will be saved
-EXPERIMENTS_HOME="~/master-project/optical-flow/self-mono-sf/checkpoints_logs"
+EXPERIMENTS_HOME="/home/sommerl/master-project/optical-flow/self-mono-sf/checkpoints_logs"
 
 # model
 MODEL=MonoSceneFlow_fullmodel
