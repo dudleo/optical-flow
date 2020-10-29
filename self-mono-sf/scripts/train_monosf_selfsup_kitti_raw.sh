@@ -15,7 +15,8 @@ MODEL=MonoSceneFlow_fullmodel
 ALIAS="-kitti-"
 TIME=$(date +"%Y%m%d-%H%M%S")
 SAVE_PATH="$EXPERIMENTS_HOME/$MODEL$ALIAS$TIME"
-CHECKPOINT=None
+CHECKPOINT="/home/sommerl/master-project/optical-flow/self-mono-sf/checkpoints_logs/MonoSceneFlow_fullmodel-kitti-20201028-214131/checkpoint_latest.ckpt"
+#CHECKPOINT=None
 
 # Loss and Augmentation
 Train_Dataset=KITTI_Raw_KittiSplit_Train_mnsf
