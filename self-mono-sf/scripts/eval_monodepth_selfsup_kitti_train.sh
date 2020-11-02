@@ -1,8 +1,11 @@
 #!/bin/bash
 
 # DATASETS_HOME
-KITTI_HOME="C:/Users/Leonh/PycharmProjects/optical-flow/datasets/KITTI_complete"
-CHECKPOINT="checkpoints/full_model_kitti/checkpoint_kitti_split.ckpt"
+
+KITTI_HOME="/home/sommerl/master-project/datasets/KITTI_flow"
+CHECKPOINT="/home/sommerl/master-project/optical-flow/self-mono-sf/checkpoints_logs/MonoSceneFlow_fullmodel-kitti-20201028-214131/checkpoint_best.ckpt"
+#KITTI_HOME="C:/Users/Leonh/PycharmProjects/optical-flow/datasets/KITTI_complete"
+#CHECKPOINT="checkpoints/full_model_kitti/checkpoint_kitti_split.ckpt"
 
 # model
 MODEL=MonoSceneFlow_fullmodel
