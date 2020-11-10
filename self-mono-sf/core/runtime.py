@@ -210,7 +210,6 @@ class TrainingEpoch:
 
                 progress.set_postfix(progress_stats)
 
-
         # Return loss and output dictionary
         ema_loss_dict = { key: ma.mean() for key, ma in moving_averages_dict.items() }
         return ema_loss_dict, output_dict
@@ -477,10 +476,13 @@ def exec_runtime(args,
             # Create and run a training epoch
             # -------------------------------------------
             if train_loader is not None:
-                avg_loss_dict, _ = training_module.run(model_and_loss=model_and_loss, optimizer=optimizer)
+                avg_loss_dict, _ = training_module.run(model_and_loss=model_and_loss, optimizer=optimizer, epoch=epoch)
 
                 if args.evaluation is False:
-                    tensorBoardWriter.add_scalar('Train/Loss', avg_loss_dict[args.training_key], epoch)
+                    #tensorBoardWriter.add_scalar('Train/Loss', avg_loss_dict[args.training_key], epoch)
+
+                    for key, val in avg_loss_dict.items():
+                        tensorBoardWriter.add_scalar('Train/' + key, val, epoch)
 
             # -------------------------------------------
             # Create and run a validation epoch
@@ -496,7 +498,11 @@ def exec_runtime(args,
                 # Tensorboard X writing
                 # --------------------------------------------------------
                 if args.evaluation is False:
-                    tensorBoardWriter.add_scalar('Val/Metric', avg_loss_dict[args.validation_key], epoch)
+                    #tensorBoardWriter.add_scalar('Val/Metric', avg_loss_dict[args.validation_key], epoch)
+
+                    for key, val in avg_loss_dict.items():
+                        tensorBoardWriter.add_scalar('Val/' + key, val, epoch)
+
 
                 # ----------------------------------------------------------------
                 # Evaluate whether this is the best validation_loss
