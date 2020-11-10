@@ -476,7 +476,7 @@ def exec_runtime(args,
             # Create and run a training epoch
             # -------------------------------------------
             if train_loader is not None:
-                avg_loss_dict, _ = training_module.run(model_and_loss=model_and_loss, optimizer=optimizer, epoch=epoch)
+                avg_loss_dict, _ = training_module.run(model_and_loss=model_and_loss, optimizer=optimizer)
 
                 if args.evaluation is False:
                     #tensorBoardWriter.add_scalar('Train/Loss', avg_loss_dict[args.training_key], epoch)
