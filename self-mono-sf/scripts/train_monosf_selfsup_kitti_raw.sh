@@ -15,17 +15,21 @@ MODEL=MonoSceneFlow_fullmodel
 ALIAS="-kitti-"
 TIME=$(date +"%Y%m%d-%H%M%S")
 SAVE_PATH="$EXPERIMENTS_HOME/$MODEL$ALIAS$TIME"
-CHECKPOINT="/home/sommerl/master-project/optical-flow/self-mono-sf/checkpoints_logs/MonoSceneFlow_fullmodel-kitti-20201028-214131/checkpoint_latest.ckpt"
-#CHECKPOINT=None
+#CHECKPOINT="/home/sommerl/master-project/optical-flow/self-mono-sf/checkpoints_logs/MonoSceneFlow_fullmodel-kitti-20201028-214131/checkpoint_latest.ckpt"
+CHECKPOINT=None
 
 # Loss and Augmentation
 Train_Dataset=KITTI_Raw_KittiSplit_Train_mnsf
 Train_Augmentation=Augmentation_SceneFlow
 Train_Loss_Function=Loss_SceneFlow_SelfSup
 
-Valid_Dataset=KITTI_Raw_KittiSplit_Valid_mnsf
+#Valid_Dataset=KITTI_Raw_KittiSplit_Valid_mnsf
+#Valid_Augmentation=Augmentation_Resize_Only
+#Valid_Loss_Function=Loss_SceneFlow_SelfSup
+
+Valid_Dataset=KITTI_2015_Train_Full_mnsf
 Valid_Augmentation=Augmentation_Resize_Only
-Valid_Loss_Function=Loss_SceneFlow_SelfSup
+Valid_Loss_Function=Eval_Disp_Only
 
 # training configuration
 python ../main.py \
