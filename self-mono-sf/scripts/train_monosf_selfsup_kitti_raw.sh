@@ -8,6 +8,8 @@ KITTI_RAW_HOME="/home/sommerl/master-project/datasets/KITTI_complete"
 #own experiment directory where checkpoints and log files will be saved
 EXPERIMENTS_HOME="/home/sommerl/master-project/optical-flow/self-mono-sf/checkpoints_logs"
 
+KITTI_HOME="/home/sommerl/master-project/datasets/KITTI_flow"
+
 # model
 MODEL=MonoSceneFlow_fullmodel
 
