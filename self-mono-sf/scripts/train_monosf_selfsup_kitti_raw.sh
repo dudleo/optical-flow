@@ -58,7 +58,7 @@ python ../main.py \
 --training_loss=$Train_Loss_Function \
 --validation_augmentation=$Valid_Augmentation \
 --validation_dataset=$Valid_Dataset \
---validation_dataset_root=$KITTI_RAW_HOME \
+--validation_dataset_root=$KITTI_HOME \
 --validation_dataset_preprocessing_crop=False \
---validation_key=total_loss \
+--validation_key=ab \
 --validation_loss=$Valid_Loss_Function \
