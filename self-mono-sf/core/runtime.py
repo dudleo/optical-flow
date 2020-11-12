@@ -327,9 +327,9 @@ class EvaluationEpoch:
             example_dict = self._augmentation(example_dict)
 
         # Run forward pass to get losses and outputs.
-        model_and_loss._args.evaluation = True
+        model_and_loss._model._args.evaluation = True
         loss_dict, output_dict = model_and_loss(example_dict)
-        model_and_loss._args.evaluation = False
+        model_and_loss._model._args.evaluation = False
 
         return loss_dict, output_dict
 
