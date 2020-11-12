@@ -1267,6 +1267,8 @@ class Eval_Disp_Only(nn.Module):
 
     def forward(self, output_dict, target_dict):
         
+        print('ouput_dict.keys()', output_dict.keys())
+        print('target_dict.keys()', target_dict.keys())
 
         loss_dict = {}
 
