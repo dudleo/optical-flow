@@ -1464,6 +1464,9 @@ class Eval_MonoDepth(nn.Module):
         
         loss_dict = {}
 
+        print('ouput_dict.keys()', output_dict.keys())
+        print('target_dict.keys()', target_dict.keys())
+
         ## Depth Eval
         gt_disp = target_dict['target_disp']
         gt_disp_mask = (target_dict['target_disp_mask']==1)
