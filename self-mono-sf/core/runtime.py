@@ -327,7 +327,9 @@ class EvaluationEpoch:
             example_dict = self._augmentation(example_dict)
 
         # Run forward pass to get losses and outputs.
+        model_and_loss._args.evaluation = True
         loss_dict, output_dict = model_and_loss(example_dict)
+        model_and_loss._args.evaluation = False
 
         return loss_dict, output_dict
 
@@ -493,7 +495,6 @@ def exec_runtime(args,
                 # Construct holistic recorder for epoch
                 # ---------------------------------------------------
                 avg_loss_dict, output_dict = evaluation_module.run(model_and_loss=model_and_loss, epoch=epoch)
-
                 # --------------------------------------------------------
                 # Tensorboard X writing
                 # --------------------------------------------------------
