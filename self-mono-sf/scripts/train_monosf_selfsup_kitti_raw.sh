@@ -35,7 +35,7 @@ Valid_Loss_Function=Eval_Disp_Only
 
 # training configuration
 python ../main.py \
---batch_size=4 \
+--batch_size=1 \
 --batch_size_val=1 \
 --checkpoint=$CHECKPOINT \
 --lr_scheduler=MultiStepLR \
@@ -53,7 +53,7 @@ python ../main.py \
 --training_dataset_root=$KITTI_RAW_HOME \
 --training_dataset_flip_augmentations=True \
 --training_dataset_preprocessing_crop=True \
---training_dataset_num_examples=-1 \
+--training_dataset_num_examples=1 \
 --training_key=total_loss \
 --training_loss=$Train_Loss_Function \
 --validation_augmentation=$Valid_Augmentation \
