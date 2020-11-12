@@ -1267,8 +1267,8 @@ class Eval_Disp_Only(nn.Module):
 
     def forward(self, output_dict, target_dict):
         
-        print('ouput_dict.keys()', output_dict.keys())
-        print('target_dict.keys()', target_dict.keys())
+        #print('ouput_dict.keys()', output_dict.keys())
+        #print('target_dict.keys()', target_dict.keys())
 
         loss_dict = {}
 
@@ -1464,8 +1464,8 @@ class Eval_MonoDepth(nn.Module):
         
         loss_dict = {}
 
-        print('ouput_dict.keys()', output_dict.keys())
-        print('target_dict.keys()', target_dict.keys())
+        #print('ouput_dict.keys()', output_dict.keys())
+        #print('target_dict.keys()', target_dict.keys())
 
         ## Depth Eval
         gt_disp = target_dict['target_disp']
