@@ -21,7 +21,7 @@ SAVE_PATH="$EXPERIMENTS_HOME/$MODEL$ALIAS$TIME"
 CHECKPOINT=None
 
 # Loss and Augmentation
-Train_Dataset=KITTI_Raw_KittiSplit_Train_mnsf
+Train_Dataset=KITTI_Raw_KittiSplit_Valid_mnsf
 Train_Augmentation=Augmentation_SceneFlow
 Train_Loss_Function=Loss_SceneFlow_SelfSup
 
