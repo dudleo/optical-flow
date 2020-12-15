@@ -7,8 +7,15 @@
 KITTI_RAW_HOME="/home/sommerl/master-project/datasets/KITTI_complete"
 #own experiment directory where checkpoints and log files will be saved
 EXPERIMENTS_HOME="/home/sommerl/master-project/optical-flow/self-mono-sf/checkpoints_logs"
-
 KITTI_HOME="/home/sommerl/master-project/datasets/KITTI_flow"
+
+# experiments and datasets meta
+KITTI_RAW_HOME="/media/driveD/datasets/KITTI_complete"
+#own experiment directory where checkpoints and log files will be saved
+EXPERIMENTS_HOME="/home/leo/master-project/optical-flow/self-mono-sf/checkpoints_logs"
+KITTI_HOME="/media/driveD/datasets/KITTI_flow"
+
+CUDA_HOME="/usr/local/cuda-11.1"
 
 # model
 MODEL=MonoSceneFlow_fullmodel
@@ -32,6 +39,17 @@ Train_Loss_Function=Loss_SceneFlow_SelfSup
 Valid_Dataset=KITTI_2015_Train_Full_mnsf
 Valid_Augmentation=Augmentation_Resize_Only
 Valid_Loss_Function=Eval_Disp_Only
+
+parameters:
+--batch_size=1 --batch_size_val=1 --checkpoint=None --lr_scheduler=MultiStepLR --lr_scheduler_gamma=0.5 --lr_scheduler_milestones="[23, 39, 47, 54]"
+--model=MonoSceneFlow_fullmodel --num_workers=16 --optimizer=Adam --optimizer_lr=2e-4 --save=/home/leo/master-project/optical-flow/self-mono-sf/checkpoints_logs/v1
+--total_epochs=62 --training_augmentation=Augmentation_SceneFlow --training_augmentation_photometric=True --training_dataset=KITTI_Raw_KittiSplit_Full_mnsf
+--training_dataset_root=/media/driveD/datasets/KITTI_complete --training_dataset_flip_augmentations=True --training_dataset_preprocessing_crop=True
+--training_dataset_num_examples=-1 --training_key=total_loss --training_loss=Loss_SceneFlow_SelfSup --validation_augmentation=Augmentation_Resize_Only
+--validation_dataset=KITTI_2015_Train_Full_mnsf --validation_dataset_root=/media/driveD/datasets/KITTI_flow --validation_dataset_preprocessing_crop=False --validation_key=ab
+--validation_loss=Eval_Disp_Only
+
+source ../../venv/bin/activate
 
 # training configuration
 python ../main.py \
