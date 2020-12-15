@@ -1,3 +1,41 @@
+import cv2
+import numpy as np
+
+def tensor_to_cv_img(x_in):
+    # x_in : CxHxW float32
+    # x_out : HxWxC uint8
+    x_in = torch.clamp(x_in, min=0.0, max=1.0)
+    x_out = (x_in.permute(1, 2, 0).cpu().detach().numpy() * 255.).astype(np.uint8)
+    x_out = x_out[:, :, ::-1]
+    return x_out
+
+
+def visualize_img(rgb):
+    #img: 3xHxW
+    rgb = rgb.clone()
+    img = tensor_to_cv_img(rgb)
+
+    cv2.imshow('img', img)
+    cv2.waitKey(0)
+
+visualize_img(img_l1_aug[0])
+
+in self-mono-sf/core/configuration.py in method: configure_data_loaders(args)
+        gpuargs = {"num_workers": 0, "pin_memory": False} if args.cuda else {}
+        # for debugging uncommented
+        #gpuargs = {"num_workers": args.num_workers, "pin_memory": True} if args.cuda else {}
+
+
+install on my tower - for
+add to python interpreter environment variables:
+    PATH=/home/leo/master-project/optical-flow/venv/bin:/usr/local/cuda-11.1/bin:/home/leo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/leo/pycharm-community/bin
+    LD_LIBRARY_PATH=/usr/local/cuda-11.1/lib64
+
+pearl setup:
+torch          1.2.0
+torchvision    0.4.0
+cuda           10.1.105
+nvidia-driver  440.100
 
 ## TODO ##
 
