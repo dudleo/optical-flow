@@ -375,7 +375,9 @@ def configure_data_loaders(args):
         # -----------------------------------------------------------------------------------------
         # GPU parameters
         # -----------------------------------------------------------------------------------------
-        gpuargs = {"num_workers": args.num_workers, "pin_memory": True} if args.cuda else {}
+        gpuargs = {"num_workers": 0, "pin_memory": False} if args.cuda else {}
+        # for debugging uncomment:
+        #gpuargs = {"num_workers": args.num_workers, "pin_memory": True} if args.cuda else {}
 
         train_loader = None
         validation_loader = None
