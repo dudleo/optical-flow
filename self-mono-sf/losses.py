@@ -121,7 +121,81 @@ def _gradient_y_2nd(img):
     gy = img_t + img_b - 2 * img
     return gy
 
-def _smoothness_motion_2nd(sf, img, beta=1):
+
+def robust_l1(x):
+    """Robust L1 metric."""
+    return (x ** 2 + 0.001 ** 2) ** 0.5
+
+def calc_batch_gradients(batch, margin=0):
+    #batch: torch.tensor: BxCxHxW
+    shift = 1 + margin
+    batch_grad_x = batch[:, :, :, shift:] - batch[:, :, :, :-shift]
+    # B x 2 x H x W-shift
+
+    batch_grad_y = batch[:, :, shift:, :] - batch[:, :, :-shift, :]
+    # B x 2 x H-shift x W
+
+    return batch_grad_x, batch_grad_y
+
+def calc_smoothness_loss(flow, img1, edge_weight=150, order=1, weights_inv=None, smooth_type='uflow'):
+    # flow: torch.tensor: Bx2xHxW
+    # img1: torch.tensor: Bx3xHxW
+
+    margin = 0
+    flow_k_grad_x, flow_k_grad_y = calc_batch_gradients(flow)
+    for k in range(order-1):
+        flow_k_grad_x, _ = calc_batch_gradients(flow_k_grad_x)
+        _, flow_k_grad_y = calc_batch_gradients(flow_k_grad_y)
+
+    flow_k_grad_x = torch.abs(flow_k_grad_x)
+    #flow_k_grad_x = robust_l1(flow_k_grad_x)
+    # Bx2xHxW-1
+    flow_k_grad_y = torch.abs(flow_k_grad_y)
+    #flow_k_grad_y = robust_l1(flow_k_grad_y)
+    # Bx2xH-1xW
+
+    if smooth_type == 'uflow':
+        img1_grad_x, img1_grad_y = calc_batch_gradients(img1, margin=order-1)
+    elif smooth_type == 'smsf':
+        img1_grad_x, img1_grad_y = calc_batch_gradients(img1, margin=0)
+        img1_grad_x = img1_grad_x[:, :, :, order-1:]
+        img1_grad_y = img1_grad_y[:, :, order-1:, :]
+    else:
+        print('error: unknown smooth-type: ', smooth_type)
+
+    img1_grad_x = torch.abs(img1_grad_x)
+    # Bx3xHxW-1
+    img1_grad_y = torch.abs(img1_grad_y)
+    # Bx3xH-1xW
+
+
+    if weights_inv is not None:
+        weights_inv_x = weights_inv[:, :, :, 1:-1]
+        weights_inv_y = weights_inv[:, :, 1:-1, :]
+
+        loss = (torch.mean(torch.exp(-edge_weight * torch.mean(img1_grad_x, dim=1, keepdim=True)) * flow_k_grad_x / weights_inv_x) +
+                torch.mean(torch.exp(-edge_weight * torch.mean(img1_grad_y, dim=1, keepdim=True)) * flow_k_grad_y / weights_inv_y))
+
+    else:
+        loss = (torch.mean(torch.exp(-edge_weight * torch.mean(img1_grad_x, dim=1, keepdim=True)) * flow_k_grad_x) +
+                torch.mean(torch.exp(-edge_weight * torch.mean(img1_grad_y, dim=1, keepdim=True)) * flow_k_grad_y))
+
+
+    return loss
+
+
+
+def _smoothness_motion_2nd(sf, img, pts_norm=None, beta=1):
+    loss = calc_smoothness_loss(
+        sf,
+        img,
+        edge_weight=beta,
+        order=2,
+        weights_inv=pts_norm,
+        smooth_type="smsf")
+
+    return loss
+    '''
     sf_grad_x = _gradient_x_2nd(sf)
     sf_grad_y = _gradient_y_2nd(sf)
 
@@ -134,6 +208,8 @@ def _smoothness_motion_2nd(sf, img, beta=1):
     smoothness_y = sf_grad_y * weights_y
 
     return (smoothness_x.abs() + smoothness_y.abs())
+    '''
+
 
 def _disp2depth_kitti_K(disp, k_value): 
 
@@ -163,9 +239,20 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         #self._weights = [4.0, 0.0, 0.0, 0.0, 0.0]
         self._sf = 1.0
         self._ssim_w = 0.85
-        self._disp_smooth_w = 0.1
-        self._sf_3d_pts = 0.2
-        self._sf_3d_sm = 200
+        self._disp_smooth_w = 0.1 #0.1
+        self._sf_3d_pts = 0.2 # 0.2
+        self._sf_3d_sm = 200. #200
+
+    def calc_reconstruction_loss(self, pts1_norm, pts1_ftf, pts2_bwrpd, mask_valid):
+        # x1, x2: B x 3 x H x W
+        res = pts1_ftf - pts2_bwrpd
+        epe = torch.norm(res, p=2, dim=1, keepdim=True)
+
+        dtype=epe.dtype
+        mask_valid = mask_valid.type(dtype)
+        # * 2.0 because forward and backward reconstruction are summed in self-mono-sf
+        rec_loss = torch.sum((mask_valid * epe) / (pts1_norm + 1e-8)) / (torch.sum(1. * mask_valid) + 1e-8)
+        return rec_loss
 
     def depth_loss_left_img(self, disp_l, disp_r, img_l_aug, img_r_aug, ii):
 
@@ -207,8 +294,9 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         flow_f = projectSceneFlow2Flow(k1_scale, sf_f, disp_l1)
         flow_b = projectSceneFlow2Flow(k2_scale, sf_b, disp_l2)
         occ_map_b = _adaptive_disocc_detection(flow_f).detach() * disp_occ_l2
-        occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1
 
+        occ_map_f = _adaptive_disocc_detection(flow_b).detach() * disp_occ_l1
+        #print("numel occ_map_f", float(torch.sum(occ_map_f)) / torch.numel(occ_map_f))
         ## Image reconstruction loss
         img_l2_warp = reconstructImg(coord1, img_l2_aug)
         img_l1_warp = reconstructImg(coord2, img_l1_aug)
@@ -217,28 +305,37 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         img_diff2 = (_elementwise_l1(img_l2_aug, img_l1_warp) * (1.0 - self._ssim_w) + _SSIM(img_l2_aug, img_l1_warp) * self._ssim_w).mean(dim=1, keepdim=True)
         loss_im1 = img_diff1[occ_map_f].mean()
         loss_im2 = img_diff2[occ_map_b].mean()
-        img_diff1[~occ_map_f].detach_()
-        img_diff2[~occ_map_b].detach_()
+        #img_diff1[~occ_map_f].detach_()
+        #img_diff2[~occ_map_b].detach_()
         loss_im = loss_im1 + loss_im2
         
         ## Point reconstruction Loss
         pts_norm1 = torch.norm(pts1, p=2, dim=1, keepdim=True)
         pts_norm2 = torch.norm(pts2, p=2, dim=1, keepdim=True)
-        pts_diff1 = _elementwise_epe(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
-        pts_diff2 = _elementwise_epe(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
-        loss_pts1 = pts_diff1[occ_map_f].mean()
-        loss_pts2 = pts_diff2[occ_map_b].mean()
-        pts_diff1[~occ_map_f].detach_()
-        pts_diff2[~occ_map_b].detach_()
-        loss_pts = loss_pts1 + loss_pts2
+        pts_norm_avg = (pts_norm1.mean() + pts_norm2.mean()) / 2.
+        #pts_diff1 = _elementwise_epe(pts1_tf, pts2_warp).mean(dim=1, keepdim=True) / (pts_norm1 + 1e-8)
+        #pts_diff2 = _elementwise_epe(pts2_tf, pts1_warp).mean(dim=1, keepdim=True) / (pts_norm2 + 1e-8)
+        #loss_pts1 = pts_diff1[occ_map_f].mean()
+        #loss_pts2 = pts_diff2[occ_map_b].mean()
 
+        loss_pts1 = self.calc_reconstruction_loss(pts_norm1, pts1_tf, pts2_warp, occ_map_f)
+        loss_pts2 = self.calc_reconstruction_loss(pts_norm2, pts2_tf, pts1_warp, occ_map_b)
+        #pts_diff1[~occ_map_f].detach_()
+        #pts_diff2[~occ_map_b].detach_()
+        loss_pts = loss_pts1 + loss_pts2
+        #print("loss_pts", self._sf_3d_pts * loss_pts)
         ## 3D motion smoothness loss
-        loss_3d_s = ( (_smoothness_motion_2nd(sf_f, img_l1_aug, beta=10.0) / (pts_norm1 + 1e-8)).mean() + (_smoothness_motion_2nd(sf_b, img_l2_aug, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** ii)
+
+        #loss_3d_s = ( (_smoothness_motion_2nd(sf_f, img_l1_aug, beta=10.0) / (pts_norm1 + 1e-8)).mean() + (_smoothness_motion_2nd(sf_b, img_l2_aug, beta=10.0) / (pts_norm2 + 1e-8)).mean() ) / (2 ** ii)
+        loss_3d_s = ( (_smoothness_motion_2nd(sf_f, img_l1_aug, (pts_norm1 + 1e-8), beta=10.0)).mean() +
+                      (_smoothness_motion_2nd(sf_b, img_l2_aug, (pts_norm2 + 1e-8), beta=10.0)).mean() ) / (2 ** ii)
 
         ## Loss Summnation
         sceneflow_loss = loss_im + self._sf_3d_pts * loss_pts + self._sf_3d_sm * loss_3d_s
-        
-        return sceneflow_loss, loss_im, self._sf_3d_pts * loss_pts, self._sf_3d_sm * loss_3d_s
+        #print("loss_3d_s", self._sf_3d_sm * loss_3d_s)
+        #print(sceneflow_loss)
+
+        return sceneflow_loss, loss_im, self._sf_3d_pts * loss_pts, self._sf_3d_sm * loss_3d_s, pts_norm_avg
 
     def detaching_grad_of_outputs(self, output_dict):
         
@@ -271,11 +368,14 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         disp_r2_dict = output_dict['output_dict_r']['disp_l2']
 
         disp_lvl0_avg = 0.
+        disp_lvl4_avg = 0.
         sflow_lvl0_abs_avg = 0.
         for ii, (sf_f, sf_b, disp_l1, disp_l2, disp_r1, disp_r2) in enumerate(zip(output_dict['flow_f'], output_dict['flow_b'], output_dict['disp_l1'], output_dict['disp_l2'], disp_r1_dict, disp_r2_dict)):
             if ii == 0:
                 disp_lvl0_avg = torch.mean(disp_l1)
                 sflow_lvl0_abs_avg = torch.mean(torch.abs(sf_f))
+            if ii == 4:
+                disp_lvl4_avg = torch.mean(disp_l1)
 
             assert(sf_f.size()[2:4] == sf_b.size()[2:4])
             assert(sf_f.size()[2:4] == disp_l1.size()[2:4])
@@ -295,13 +395,14 @@ class Loss_SceneFlow_SelfSup(nn.Module):
             loss_dp_smooth = loss_dp_smooth + (loss_disp_l1_smooth + loss_disp_l2_smooth) * self._weights[ii]
 
             ## Sceneflow Loss           
-            loss_sceneflow, loss_im, loss_pts, loss_3d_s = self.sceneflow_loss(sf_f, sf_b, 
+            loss_sceneflow, loss_im, loss_pts, loss_3d_s, pts_norm_avg_s = self.sceneflow_loss(sf_f, sf_b,
                                                                             disp_l1, disp_l2,
                                                                             disp_occ_l1, disp_occ_l2,
                                                                             k_l1_aug, k_l2_aug,
                                                                             img_l1_aug, img_l2_aug, 
                                                                             aug_size, ii)
-
+            if ii == 0:
+                pts_norm_avg = pts_norm_avg_s
             loss_sf_sum = loss_sf_sum + loss_sceneflow * self._weights[ii]            
             loss_sf_2d = loss_sf_2d + loss_im * self._weights[ii]
             loss_sf_3d = loss_sf_3d + loss_pts * self._weights[ii]
@@ -329,8 +430,11 @@ class Loss_SceneFlow_SelfSup(nn.Module):
         loss_dict[key_base + "sf_rec"] = loss_sf_3d * f_weight * self._sf
         loss_dict[key_base + "sf_smooth"] = loss_sf_sm * f_weight * self._sf
 
+        loss_dict["pts_lvl0_norm_avg"] = pts_norm_avg
+
         loss_dict["total_loss"] = total_loss
         loss_dict["disp_lvl0_avg"] = disp_lvl0_avg
+        loss_dict["disp_lvl4_avg"] = disp_lvl4_avg
         loss_dict["sflow_lvl0_abs_avg"] = sflow_lvl0_abs_avg
 
         '''

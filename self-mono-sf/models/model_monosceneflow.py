@@ -41,19 +41,51 @@ class MonoSceneFlow(nn.Module):
                 break
 
             if l == 0:
-                num_ch_in = self.dim_corr + ch 
+                num_ch_in = self.dim_corr + ch
             else:
                 num_ch_in = self.dim_corr + ch + 32 + 3 + 1
-                self.upconv_layers.append(upconv(32, 32, 3, 2))
 
-            layer_sf = MonoSceneFlowDecoder(num_ch_in)            
-            self.flow_estimators.append(layer_sf)            
+
+            layer_sf = MonoSceneFlowDecoder(num_ch_in)
+            self.flow_estimators.append(layer_sf)
+
+            if l > 0:
+                self.upconv_layers.append(upconv(32, 32, 3, 2))
 
         self.corr_params = {"pad_size": self.search_range, "kernel_size": 1, "max_disp": self.search_range, "stride1": 1, "stride2": 1, "corr_multiply": 1}        
         self.context_networks = ContextNetwork(32 + 3 + 1)
         self.sigmoid = torch.nn.Sigmoid()
 
-        initialize_msra(self.modules())
+        num_params = 0
+        for param in self.upconv_layers.parameters():
+            num_params += param.numel()
+        print("upconv_layers has", num_params, "parameters")
+
+        self.init_params()
+        #initialize_msra(self.modules())
+
+    def init_params(self):
+        weights_means = []
+        weights_vars = []
+        bias_means = []
+        bias_vars = []
+
+        for param in self.parameters():
+            #print('before', torch.var_mean(param))
+
+            if len(param.size()) == 1:
+                torch.nn.init.zeros_(param)
+                var, mean = torch.var_mean(param)
+                bias_means.append(mean)
+                bias_vars.append(var)
+            else:
+                #torch.nn.init.kaiming_uniform_(param, a=self.leaky_relu_negative_slope)#, gain=1e-1)
+                # torch.nn.init.xavier_uniform_(param)
+
+                torch.nn.init.kaiming_normal_(param)
+                var, mean = torch.var_mean(param)
+                weights_means.append(mean)
+                weights_vars.append(var)
 
     def run_pwc(self, input_dict, x1_raw, x2_raw, k1, k2):
             
@@ -101,12 +133,14 @@ class MonoSceneFlow(nn.Module):
                 flow_f = flow_f + flow_f_res
                 flow_b = flow_b + flow_b_res
 
+
+            #print('flow_f.abs().mean()', flow_f.abs().mean())
             # upsampling or post-processing
             if l != self.output_level:
                 disp_l1 = self.sigmoid(disp_l1) * 0.3
                 disp_l2 = self.sigmoid(disp_l2) * 0.3
                 sceneflows_f.append(flow_f)
-                sceneflows_b.append(flow_b)                
+                sceneflows_b.append(flow_b)
                 disps_1.append(disp_l1)
                 disps_2.append(disp_l2)
             else:
@@ -115,10 +149,16 @@ class MonoSceneFlow(nn.Module):
                 flow_f = flow_f + flow_res_f
                 flow_b = flow_b + flow_res_b
                 sceneflows_f.append(flow_f)
+                #print('flow_f.abs().mean()', flow_f.abs().mean())
+
                 sceneflows_b.append(flow_b)
                 disps_1.append(disp_l1)
                 disps_2.append(disp_l2)                
                 break
+
+
+        #for flow in sceneflows_f:
+        #    print('flow', torch.min(flow), torch.max(flow))
 
         x1_rev = x1_pyramid[::-1]
 
@@ -126,7 +166,12 @@ class MonoSceneFlow(nn.Module):
         output_dict['flow_b'] = upsample_outputs_as(sceneflows_b[::-1], x1_rev)
         output_dict['disp_l1'] = upsample_outputs_as(disps_1[::-1], x1_rev)
         output_dict['disp_l2'] = upsample_outputs_as(disps_2[::-1], x1_rev)
-        
+
+        #for i in range(len(output_dict['disp_l1'])):
+        #    print('disp.mean()', output_dict['disp_l1'][i].mean())
+
+        #for i in range(len(output_dict['flow_f'])):
+        #    print('flow.abs().mean()', output_dict['flow_f'][i].abs().mean())
         return output_dict
 
 

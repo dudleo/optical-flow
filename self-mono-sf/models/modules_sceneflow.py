@@ -108,12 +108,16 @@ def conv(in_planes, out_planes, kernel_size=3, stride=1, dilation=1, isReLU=True
 class upconv(nn.Module):
     def __init__(self, num_in_layers, num_out_layers, kernel_size, scale):
         super(upconv, self).__init__()
-        self.scale = scale
-        self.conv1 = conv(num_in_layers, num_out_layers, kernel_size, 1)
+        #self.scale = scale
+        #self.conv1 = conv(num_in_layers, num_out_layers, kernel_size, 1)
+
+        self.convTrans2d = nn.ConvTranspose2d(num_in_layers, num_out_layers,
+                                              kernel_size=4, stride=2, padding=1)
 
     def forward(self, x):
-        x = nn.functional.interpolate(x, scale_factor=self.scale, mode='nearest')
-        return self.conv1(x)
+        #x = nn.functional.interpolate(x, scale_factor=self.scale, mode='nearest')
+        #return self.conv1(x)
+        return self.convTrans2d(x)
 
 
 class FeatureExtractor(nn.Module):

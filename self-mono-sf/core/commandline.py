@@ -192,7 +192,8 @@ def _parse_arguments():
     add("--evaluation", type=tools.str2bool, default=False)
     add("--num_workers", type=int, default=4)
     add("--save", "-s", default="temp_exp/", type=str)
-    add("--seed", type=int, default=1)
+    add("--seed", type=int, default=1) # 7 was quite smiliar to ours 35
+    #6 super bad
     add("--start_epoch", type=int, default=1)
     add("--total_epochs", type=int, default=1)
     add("--save_flow", type=tools.str2bool, default=False)
